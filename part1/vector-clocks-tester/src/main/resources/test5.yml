@@ -1,0 +1,19 @@
+events:
+  - source: client-b
+    dest: self
+    start: 5
+  - source: client-a
+    dest: self
+    start: 10
+  - source: client-a
+    dest: client-b
+    start: 15
+  - source: client-b
+    dest: client-a
+    start: 20
+  - source: client-b
+    dest: self
+    start: 25
+  - source: client-a
+    dest: self
+    start: 30
