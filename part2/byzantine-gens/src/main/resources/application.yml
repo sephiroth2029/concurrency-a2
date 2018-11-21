@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: placeholder
+  profiles:
+    active: chaos-monkey
+server:
+  port: 0
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+  instance:
+    preferIpAddress: true
+
+concurrency:
+  a2:
+    byz:
+      id: 0
+      total-generals: 1
+      traitor: true
+      rounds: 0
+      order: ATTACK
+      max-timeout: 20000
+
+chaos:
+  monkey:
+    enabled: true
+    watcher:
+      component: false
+      controller: false
+      repository: false
+      rest-controller: true
+      service: true
+    assaults:
+      level: 100
+      exceptions-active: true
+      watched-custom-services:
+        - ca.uvic.concurrency.gmmurguia.a2.byzantinegens.GeneralController.receiveMessage
+management:
+  endpoint:
+    chaosmonkey:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,chaosmonkey,metrics
