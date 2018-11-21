@@ -12,12 +12,12 @@ In this section, the problems, their solutions and the results obtained are desc
 
 #### **1. Vector clocks**
 ##### **Description**
-Lamport's logical clocks ensure that we can identify "happens before" causal relationships.  They don't go so far as to identify which events might be causally concurrent.  Vector clocks can though!
+[Lamport's logical clocks][20] ensure that we can identify "happens before" causal relationships.  They don't go so far as to identify which events might be causally concurrent.  [Vector clocks][21] can though!
 
 ##### **Implementation**
 The environment comprises three separate Java projects, built using Spring Boot and Maven:
 1. [The Eureka server][3]. This project is only meant to start Netflix' Eureka server, which is a discovery server for microservices. It allows to start multiple instances and keep track of all of them, while removing any hostname/addres dependency from the clients.
-2. [The clients][4]. The implementation of the algorithm is contained in this project. There are four submodules: three for each client and one with the definition of endpoints for message configuration and execution, as well as vector and history retrieval. Each client is an independent microservice which registers itself to the Eureka server and queries it to resolve the other clients while exchanging messages.
+2. [The clients][4]. The implementation of the algorithm is contained in this project using microservices. There are four submodules: three for each client and one with the definition of endpoints for message configuration and execution, as well as vector and history retrieval. Each client is an independent microservice which registers itself to the Eureka server and queries it to resolve the other clients while exchanging messages.
 3. [The test framework][5]. This project was built in order to ease the execution of tests and the analysis of results. When executed, the path to the test configuration file should be provided. The configuration is in YAML format and it contains the events that will flow through the system.
 
 The test configuration files are found [here][6]. Each file contains a list of events with following structure:
@@ -80,7 +80,99 @@ Since all of the events were messages being sent from one process to another, th
 
 ###### **Causally concurrent**
 In this test, the files [test4.yml][12], [test45.yml][13], [test6.yml][14], [test7.yml][15], [test8.yml][16] and [test9.yml][17] were configured to represent the events shown the following diagram (taken from [this lecture][18]):
-![Missing graph][19]
+![Missing graph][199]
+
+`test4.yml` is configured to represent the previous diagram, and will be used as a baseline for the analysis.
+
+`test5.yml` inverts the order of the first two events. The resulting log shows that the two events don't affect the interaction between them, and because of that the vectors remain the same. Therefore, we can conclude that these events are causally concurrent:
+
+`test4.yml`
+```
+...
+2018-11-15 23:08:48.758  INFO 9940 --- [           main] c.u.c.g.a.v.TestExecution                : client-b final vector: [[0,0],[0,1],[0,2],[2,3],[2,4]]
+2018-11-15 23:08:48.783  INFO 9940 --- [           main] c.u.c.g.a.v.TestExecution                : client-a final vector: [[0,0],[1,0],[2,0],[3,0],[4,3]]
+```
+
+`test5.yml`
+```
+...
+2018-11-15 23:15:48.648  INFO 13192 --- [           main] c.u.c.g.a.v.TestExecution                : client-b final vector: [[0,0],[0,1],[0,2],[2,3],[2,4]]
+2018-11-15 23:15:48.672  INFO 13192 --- [           main] c.u.c.g.a.v.TestExecution                : client-a final vector: [[0,0],[1,0],[2,0],[3,0],[4,3]]
+```
+
+For `test6.yml`, the events 3, 4 and 5 changed their order, yielding the different vectors starting at the fourth vector and affecting the last one.
+
+`test4.yml`
+```
+...
+2018-11-15 23:08:48.758  INFO 9940 --- [           main] c.u.c.g.a.v.TestExecution                : client-b final vector: [[0,0],[0,1],[0,2],[2,3],[2,4]]
+2018-11-15 23:08:48.783  INFO 9940 --- [           main] c.u.c.g.a.v.TestExecution                : client-a final vector: [[0,0],[1,0],[2,0],[3,0],[4,3]]
+```
+
+`test6.yml`
+```
+...
+2018-11-15 23:23:09.948  INFO 10800 --- [           main] c.u.c.g.a.v.TestExecution                : client-b final vector: [[0,0],[0,1],[0,2],[0,3],[4,4]]
+2018-11-15 23:23:09.968  INFO 10800 --- [           main] c.u.c.g.a.v.TestExecution                : client-a final vector: [[0,0],[1,0],[2,0],[3,2],[4,2]]
+```
+
+For `test7.yml`, the last two events were inverted. In this case, as in the first test, a change of order on the execution of the events does not affect the final vector. The reason for that is that they are internal events and there is no relationship between them; they are causally concurrent as well:
+
+`test4.yml`
+```
+...
+2018-11-15 23:08:48.758  INFO 9940 --- [           main] c.u.c.g.a.v.TestExecution                : client-b final vector: [[0,0],[0,1],[0,2],[2,3],[2,4]]
+2018-11-15 23:08:48.783  INFO 9940 --- [           main] c.u.c.g.a.v.TestExecution                : client-a final vector: [[0,0],[1,0],[2,0],[3,0],[4,3]]
+```
+
+`test7.yml`
+```
+...
+2018-11-15 23:27:49.837  INFO 14392 --- [           main] c.u.c.g.a.v.TestExecution                : client-b final vector: [[0,0],[0,1],[0,2],[2,3],[2,4]]
+2018-11-15 23:27:49.858  INFO 14392 --- [           main] c.u.c.g.a.v.TestExecution                : client-a final vector: [[0,0],[1,0],[2,0],[3,0],[4,3]]
+```
+
+Finally, `test8.yml` and `test9.yml` show what would happen if we included events after the last internal events executed, to confirm the aforementioned concurrency. As expected, the vector history is exactly the same for the three cases:
+
+`test4.yml`
+```
+...
+2018-11-15 23:08:48.758  INFO 9940 --- [           main] c.u.c.g.a.v.TestExecution                : client-b final vector: [[0,0],[0,1],[0,2],[2,3],[2,4]]
+2018-11-15 23:08:48.783  INFO 9940 --- [           main] c.u.c.g.a.v.TestExecution                : client-a final vector: [[0,0],[1,0],[2,0],[3,0],[4,3]]
+```
+
+`test8.yml`
+```
+...
+2018-11-15 23:32:26.685  INFO 10824 --- [           main] c.u.c.g.a.v.TestExecution                : client-b final vector: [[0,0],[0,1],[0,2],[2,3],[2,4],[2,5],[5,6]]
+2018-11-15 23:32:26.701  INFO 10824 --- [           main] c.u.c.g.a.v.TestExecution                : client-a final vector: [[0,0],[1,0],[2,0],[3,0],[4,3],[5,3],[6,6]]
+```
+
+`test9.yml`
+```
+...
+2018-11-15 23:33:48.318  INFO 8064 --- [           main] c.u.c.g.a.v.TestExecution                : client-b final vector: [[0,0],[0,1],[0,2],[2,3],[2,4],[2,5],[5,6]]
+2018-11-15 23:33:48.338  INFO 8064 --- [           main] c.u.c.g.a.v.TestExecution                : client-a final vector: [[0,0],[1,0],[2,0],[3,0],[4,3],[5,3],[6,6]]
+```
+
+#### **2. Byzantine generals**
+##### **Description**
+The [Byzantine generals problem][22] was defined by Lamport, Shostak and Pease in 1982. A summary explanation of the problem can be found in [YouTube][23]. Lamport also proposes an statistical solution, which was implemented for this part of the assignment.
+
+##### **Implementation**
+The solution to the problem was implemented using microservices, one for each general. There is a single project for the n generals, but it is required to start an Eureka server. The server [project][24] for the vector clocks can and was reused to test the generals.
+
+To better understand the [generals' project][25] let us consider the following:
+
+1. [start.bat][26] would serve as the configuration and execution file. There we can configure the parameters for each general. General 0 will always be the commander, and once it starts and registers to the Eureka server it will start pinging the other generals until all of them are up. Then it will send the command.
+2. As part of the parameters, each general receives a `concurrency.a2.byz.traitor` boolean flag, to indicate if the general is loyal or not. If a general is not loyal, the messages it sends will not be consistent; it will send the original order if the recepient general number is odd and the opposite value if it is even.
+3. The number of rounds is specified through the `concurrency.a2.byz.rounds` flag. In Lamport's algorithm the number of rounds should be m + 1 and, as we will see in the results section, this is crucial to actually solve the problem.
+4. By default all logs go to logs/byzantine-generals.log. However, in order to have one log file per general, it is currently defined for each microservice.
+5. Messages written to the logs are kept to a minimum, as  tests with 3 or more traitors produce a large number of messages and logging affects the performance greatly. Still, they can be reenabled by adjusting the logging parameter `logging.level.ca.uvic.concurrency.gmmurguia.a2.byzantinegens` to `DEBUG`.
+6. The two most important components of the project are [General.java][27], where most of the algorithm's logic is implemented. and [GeneralController.java][28], which is the component that exposes the endpoint to receive messages.
+
+##### **Results**
+
 
 
 [1]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part1
@@ -102,3 +194,12 @@ In this test, the files [test4.yml][12], [test45.yml][13], [test6.yml][14], [tes
 [17]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part1/vector-clocks-tester/src/main/resources/test9.yml
 [18]: https://www.isical.ac.in/~ansuman/dist_sys/Lecture1.pdf
 [19]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part1/diagrams/Concurrent.PNG?raw=true
+[20]: https://amturing.acm.org/p558-lamport.pdf
+[21]: http://zoo.cs.yale.edu/classes/cs426/2012/lab/bib/fidge88timestamps.pdf
+[22]: https://people.eecs.berkeley.edu/~luca/cs174/byzantine.pdf
+[23]: https://www.youtube.com/watch?v=_MwqAaVweJ8
+[24]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part1/vector-clocks
+[25]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part2/byzantine-gens
+[26]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/byzantine-gens/start.bat
+[27]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/byzantine-gens/src/main/java/ca/uvic/concurrency/gmmurguia/a2/byzantinegens/General.java
+[28]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/byzantine-gens/src/main/java/ca/uvic/concurrency/gmmurguia/a2/byzantinegens/GeneralController.java
