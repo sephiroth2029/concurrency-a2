@@ -164,7 +164,7 @@ The solution to the problem was implemented using microservices, one for each ge
 
 To better understand the [generals' project][25] let us consider the following:
 
-1. [start.bat][26] would serve as the configuration and execution file. There we can configure the parameters for each general. General 0 will always be the commander, and once it starts and registers to the Eureka server it will start pinging the other generals until all of them are up. Then it will send the command.
+1. [<file>.bat][26] serves as the configuration and execution file. Since the tests were executed on Windows, it is a batch file but it can be easily converted to a bash file. Parameters for each general can be configured in it. General 0 will always be the commander, and once it starts and registers to the Eureka server it will start pinging the other generals until all of them are up. Then it will send the command.
 2. As part of the parameters, each general receives a `concurrency.a2.byz.traitor` boolean flag, to indicate if the general is loyal or not. If a general is not loyal, the messages it sends will not be consistent; it will send the original order if the recepient general number is odd and the opposite value if it is even.
 3. The number of rounds is specified through the `concurrency.a2.byz.rounds` flag. In Lamport's algorithm the number of rounds should be m + 1 and, as we will see in the results section, this is crucial to actually solve the problem.
 4. By default all logs go to logs/byzantine-generals.log. However, in order to have one log file per general, it is currently defined for each microservice.
@@ -172,8 +172,31 @@ To better understand the [generals' project][25] let us consider the following:
 6. The two most important components of the project are [General.java][27], where most of the algorithm's logic is implemented. and [GeneralController.java][28], which is the component that exposes the endpoint to receive messages.
 
 ##### **Results**
+Once the `<file>.bat` is executed, each general will be started as an independent process. Since they are independent it is possible to run all of them on the same machine or use several to distribute the generals; the only caveat is that the Eureka server must be visible to all of them and all should register on the same server, so they can discover each other. The following picture illustrates the execution of the batch file:
 
+![Missing graph][299]
 
+###### **One traitor**
+In this case the minimum number of generals for the algorithm to work are 7, and it can be solved in two rounds. Below is a summary of the execution of the generals. Notice that the times are not sequencial because this was taken from individual log files.
+
+```
+2018-11-21 14:01:44.433  INFO 44536 --- [           main] c.u.c.g.a2.byzantinegens.General         : [General 0] I'm commander, sending order (ATTACK)
+2018-11-21 12:46:18.708  INFO 53796 --- [pool-1-thread-1] c.u.c.g.a2.byzantinegens.General         : [General 1] Decided on RETREAT
+2018-11-21 12:46:17.882  INFO 79040 --- [pool-1-thread-1] c.u.c.g.a2.byzantinegens.General         : [General 2] Decided on RETREAT
+2018-11-21 12:46:18.960  INFO 77236 --- [pool-1-thread-1] c.u.c.g.a2.byzantinegens.General         : [General 3] Decided on RETREAT
+2018-11-21 12:46:16.144  INFO 42712 --- [pool-1-thread-1] c.u.c.g.a2.byzantinegens.General         : [General 4] Decided on RETREAT
+2018-11-21 12:46:16.903  INFO 64940 --- [pool-1-thread-1] c.u.c.g.a2.byzantinegens.General         : [General 5] Decided on RETREAT
+2018-11-21 12:46:16.915  INFO 13764 --- [pool-1-thread-1] c.u.c.g.a2.byzantinegens.General         : [General 6] Decided on RETREAT
+```
+
+###### **Three traitors**
+The case for two traitors is more challenging, as each general has to detect possible loops in the messages and avoid relaying those messages. However, in order to test if the algorithm would be able to scale up, instead of testing with two traitors, three proved to give better insights:
+1. First, it took much longer for each general to converge and come up with a reponse. While testing this part, intermediate messages were printed to the log and they had to be moved to a DEBUG log, as the time spent on logging affected greatly the performance and it seemed as if it had fallen on a loop.
+2. Second, after the logging was removed, the load to each microservice's web server was so high that it started dropping packages.
+
+After fixing these problems, the generals converged to the same result. Finally, as an additional test, the rounds were reduced from 4 to three. The result was that the generals finished, but didn't agree on the result.
+
+As a final test, a file for 7 generals, 3 traitors and 4 rounds. It's interesting to note that for that test the generals agreeded on the result. However, that is not guaranteed. In this case, the traitors relay half of the messages, increasing the chance of obtaining the same result.
 
 [1]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part1
 [2]: https://github.com/Netflix/eureka/wiki/Eureka-at-a-glance
@@ -203,3 +226,4 @@ To better understand the [generals' project][25] let us consider the following:
 [26]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/byzantine-gens/start.bat
 [27]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/byzantine-gens/src/main/java/ca/uvic/concurrency/gmmurguia/a2/byzantinegens/General.java
 [28]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/byzantine-gens/src/main/java/ca/uvic/concurrency/gmmurguia/a2/byzantinegens/GeneralController.java
+[29]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/diagrams/one_traito_execution.PNG?raw=true
