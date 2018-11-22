@@ -80,7 +80,7 @@ Since all of the events were messages being sent from one process to another, th
 
 ###### **Causally concurrent**
 In this test, the files [test4.yml][12], [test45.yml][13], [test6.yml][14], [test7.yml][15], [test8.yml][16] and [test9.yml][17] were configured to represent the events shown the following diagram (taken from [this lecture][18]):
-![Missing graph][199]
+![Missing graph][19]
 
 `test4.yml` is configured to represent the previous diagram, and will be used as a baseline for the analysis.
 
@@ -174,7 +174,7 @@ To better understand the [generals' project][25] let us consider the following:
 ##### **Results**
 Once the `<file>.bat` is executed, each general will be started as an independent process. Since they are independent it is possible to run all of them on the same machine or use several to distribute the generals; the only caveat is that the Eureka server must be visible to all of them and all should register on the same server, so they can discover each other. The following picture illustrates the execution of the batch file:
 
-![Missing graph][299]
+![Missing graph][29]
 
 ###### **One traitor**
 In this case the minimum number of generals for the algorithm to work are 7, and it can be solved in two rounds. Below is a summary of the execution of the generals. Notice that the times are not sequencial because this was taken from individual log files.
