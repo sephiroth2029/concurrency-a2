@@ -164,7 +164,7 @@ The solution to the problem was implemented using microservices, one for each ge
 
 To better understand the [generals' project][25] let us consider the following:
 
-1. [bat files][26] serve as the configuration and execution files. Since the tests were executed on Windows, they are batch filse which can be easily converted to a bash file for Linux/Mac. Parameters for each general can be configured in them. General 0 will always be the commander, and once it starts and registers to the Eureka server it will start pinging the other generals until all of them are up. Then it will send the command.
+1. [bat files][26] serve as the configuration and execution files. Since the tests were executed on Windows, they are batch files which can be easily converted to a bash file for Linux/Mac. Parameters for each general can be configured in them. General 0 will always be the commander, and once it starts and registers to the Eureka server it will start pinging the other generals until all of them are up. Then it will send the command.
 2. As part of the parameters, each general receives a `concurrency.a2.byz.traitor` boolean flag, to indicate if the general is loyal or not. If a general is not loyal, the messages it sends will not be consistent; it will send the original order if the recepient general number is odd and the opposite value if it is even.
 3. The number of rounds is specified through the `concurrency.a2.byz.rounds` flag. In Lamport's algorithm the number of rounds should be m + 1 and, as we will see in the results section, this is crucial to actually solve the problem.
 4. By default all logs go to `logs/byzantine-generals.log`. However, in order to have one log file per general, it is currently defined for each microservice.
@@ -223,7 +223,7 @@ As a final test, a file for 7 generals, 3 traitors and 4 rounds was created. It 
 [23]: https://www.youtube.com/watch?v=_MwqAaVweJ8
 [24]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part1/vector-clocks
 [25]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part2/byzantine-gens
-[26]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/byzantine-gens/start.bat
+[26]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/byzantine-gens/
 [27]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/byzantine-gens/src/main/java/ca/uvic/concurrency/gmmurguia/a2/byzantinegens/General.java
 [28]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/byzantine-gens/src/main/java/ca/uvic/concurrency/gmmurguia/a2/byzantinegens/GeneralController.java
 [29]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/diagrams/one_traito_execution.PNG?raw=true
