@@ -200,9 +200,9 @@ As a final test, a file for 7 generals, 3 traitors and 4 rounds was created. It 
 
 #### **3. Chaos testing and improvement of microservices**
 ##### **Description**
-Chaos testing is a relatively new approach to testing initiated by [Netflix][31], in which failure is introduced to a system to ensure that it will be able to withstand those failures while still providing a good quality level to incoming requests. One such tool Chaos Engineering tools is [Chaos Monkey][32]. 
+Chaos testing is a relatively new approach to testing initiated by [Netflix][31], in which failure is introduced to a system to ensure that it will be able to withstand those failures while still providing good-quality responses to incoming requests. One tool to automate Chaos Engineering is [Chaos Monkey][32]. 
 
-The core idea behind chaos testing is to prove right or wrong a hypothesis regarding the system's stability. If the outcome was the expected result, then the level of confidence on the system increases, and if it fails then actions should be taken to improve the resilience of the system. Netflix has developed and open sourced tools to be able to respond to failure. [Hystrix][33] is one of them, and it is meant to setup fallback handlers to respond to undesired conditions, such as latency, service errors and service communication problems.
+The core idea behind Chaos Engineering is to prove right or wrong a hypothesis regarding the system's stability. If the outcome was the expected result, then the level of confidence on the system increases, and if it fails then actions should be taken to improve the resilience of the system. Netflix has developed and open sourced tools to be able to respond to failure. [Hystrix][33] is one of them, and it is meant to setup fallback handlers to respond to undesired conditions, such as latency, service errors and service communication problems.
 
 Finally, monitoring applications allows to obtain insights about the production state and behavior of microservices. There are several tools to do this, and Netflix has also open sourced the [Hystrix dashboard][34] to provide real-time statistics of microservices' endpoints.
 
@@ -214,9 +214,9 @@ The [first][41] of the clients, `TestClient.java`, was built using a standard co
 `Hystrix Dashboard` is another tool that may consume the statistics produced by micrometer.io. The [projects][47] from a [DZone article][46] were cloned and adjusted to evaluate the Dashboard in isolation. That project starts two microservices and exposes real time data through the `Hystrix Dashboard`, but it is necessary to consume the services or the graphs do not represent anything useful. Because of that, the [resulting project][48] was tested through [Gatling][49], a load and performance testing tool. Several requests were sent while the application was being monitored and the resulting graphs were captured.
 
 ##### **Results**
-Chaos Monkey for Spring Boot turned out to provide more functionality than what was expected. Note that a good response would be "test", while a bad response would be "Fallback" for the Feign client and "Sorry, no String available at the moment" for the standard `RestClient`. The responses were stored in a list and displayed at the end of the test case. Three types of failure were tested:
+Chaos Monkey for Spring Boot turned out to provide more functionality than what was expected. Note that a good response would be "test", while a bad response would be "Fallback" for the Feign client and "Sorry, no String available at the moment" for the standard REST client. The responses were stored in a list and displayed at the end of the test case. Three types of failure were tested:
 
-- **Latency**. The endpoint's response was slowed down. As a result, it was possible to use Hystrix to tweak the client and ensure that, in the case of a slow responses or hanging connections, the end-user still receives a response and is able to continue consuming the application. This configuration can be activated in `application.properties` with this line:
+- **Latency**. The endpoint's response was slowed down. As a result, it was possible to use `Hystrix` to tweak the client and ensure that, in the case of a slow responses or hanging connections, the end-user still receives a response and is able to continue consuming the application. This configuration can be activated in `application.properties` with this configuration:
 ```properties
 chaos.monkey.assaults.latency-active=true
 chaos.monkey.assaults.latencyRangeStart=4000
@@ -238,7 +238,7 @@ After executing the test cases it is clear that we obtained fallback responses d
 ...
 [test, test, test, test, test, test, test, test, test, test, Sorry, no String available at the moment., test, test, test, test, Sorry, no String available at the moment., test, Sorry, no String available at the moment., ..., Sorry, no String available at the moment.]
 ```
-- **Server errors**. A Chaos Monkey error (HTTP 500 status) can be returned randomly from the service. In this case Hystrix allows to handle those errors in the same manner as Latency problems, by calling a fallback method. The configuration to create random failure responses is:
+- **Server errors**. A Chaos Monkey error (HTTP 500 status) can be returned randomly from the service. In this case `Hystrix` allows to handle those errors in the same manner as Latency problems, by calling a fallback method. The configuration to create random failure responses is:
 
 ```properties
 management.endpoint.chaosmonkey.enabled=true
@@ -250,28 +250,30 @@ And the result was:
 [test, test, test, test, test, test, test, test, test, Sorry, no String available at the moment., test, test, test, test, test, test, test, Sorry, no String available at the moment., test, test, test, test, test, test, test, test, test, Sorry, ..., no String available at the moment.]
 ```
 - **Application shutdown**. It is possible to completely bring down an application through configuration. In this case, enabling this feature was not through a file but through JMX MBeans:
-![Missing graph][51].
+![Missing graph][51]
 In this case, the client keeps using its fallback mechanism but no implementation was made to automatically bring up the server again. Due to this, after the sevice was brought down all subsecuent calls received the fallback response:
 
-The next step for this part of the assignment was to monitor the applications. The `sample-spring-hystrix` project was cloned and started to that end. The interaction with the microservices is exposed through a website and through a JSON REST endpoint.
+`Feign` was found to be a very useful tool to quickly create and configure clients. The fact that it is easily integrated with `Hystrix` make it a compelling alternative to the traditional clients. Since the clients have fewer lines of boilerplate code and, at least in this simple example, they becase more readable and easier to modify.
+
+The next step for this part of the assignment was to monitor the applications. As previousy mentioned, the `sample-spring-hystrix` project was cloned and started to that end. The interaction with the microservices is exposed through a website and through a JSON REST endpoint.
 
 The website is exposed at `http://localhost:8080`:
-![Missing graph][52].
+![Missing graph][52]
 
 The JSON REST endpoint is at `http://localhost:8080/sample-hystrix-aggregate/hello`:
-![Missing graph][53].
+![Missing graph][53]
 
 Once we start the `Hystrix Dashboard` it stays in a load state, until the microservices have received enough requests to have reportable data:
-![Missing graph][54].
+![Missing graph][54]
 
 Since generating traffic by hand is cumbersome, `Gatling` tests were created for [the website][55] and the [REST service][56]. An [HTML report][57] is generated with relevant metrics and statistics about the executed test, such as the following:
-![Missing graph][58].
+![Missing graph][58]
 
 After generating traffic to the microservices' endpoints, the `Hystrix Dashboard` shows in real time statistics about the Hystrix commands:
-![Missing graph][59].
+![Missing graph][59]
 
 ### **Conclusions**
-Distributed systems have evolved as a necessity of the industry and the target has been to provide users with a seamless experience. Consistency and reliability are top concerns for distributed systems' designers and developers. Being able to order events and to produce results despite of failures make vector clocks and concensus algorithms as relevant as they were over 30 years ago.
+Distributed systems have evolved as a necessity of the industry and the target has been to provide users with a seamless experience. Consistency and reliability are top concerns for distributed systems' designers and developers. Being able to order events and to produce results despite the failures make vector clocks and concensus algorithms as relevant as they were over 30 years ago.
 
 On the other hand, testing these uncertain environments and achieving an acceptable level of confidence in their robustness has gained the attention of top companies, such as Netflix. Fortunately, access to their tools and frameworks allows the whole community to benefit from and improve those components. In this assignment a handful of them were explored under the belief that testing and monitoring are essential parts of software engineering.
 
