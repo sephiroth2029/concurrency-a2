@@ -5,7 +5,7 @@
 This assignment focuses on distributed systems. It comprises 3 parts:
 1. [Vector clocks][1]. In this part, an implementation of the vector clocks algorithm was constructed. The distributed architecture was designed using microservices, which communicate through Netflix's [Eureka][2] server. 
 2. [Byzantine generals][30]. In this part, the probabilistic solution for the problem was implemented. Again, the generals are represented as microservices.
-3. Chaos Monkey. Finally, Netflix' testing framework was explored, as a first approach to test the final project.
+3. [Chaos testing and improvement of microservices][37]. In this part, several tools from Netflix were explored and implemented as a first approach to perform evaluations on the final project.
 
 ### **Problems**
 In this section, the problems, their solutions and the results obtained are described in greater detail.
@@ -80,7 +80,7 @@ Since all of the events were messages being sent from one process to another, th
 
 ###### **Causally concurrent**
 In this test, the files [test4.yml][12], [test45.yml][13], [test6.yml][14], [test7.yml][15], [test8.yml][16] and [test9.yml][17] were configured to represent the events shown the following diagram (taken from [this lecture][18]):
-![Missing graph][19]
+![Missing graph][199]
 
 `test4.yml` is configured to represent the previous diagram, and will be used as a baseline for the analysis.
 
@@ -174,7 +174,7 @@ To better understand the [generals' project][25] let us consider the following:
 ##### **Results**
 Once the `<file>.bat` is executed, each general will be started as an independent process. Since they are independent it is possible to run all of them on the same machine or use several to distribute the generals; the only caveat is that the Eureka server must be visible to all of them and all should register on the same server, so they can discover each other. The following picture illustrates the execution of the batch file:
 
-![Missing graph][29]
+![Missing graph][299]
 
 ###### **One traitor**
 In this case the minimum number of generals for the algorithm to work are 7, and it can be solved in two rounds. Below is a summary of the execution of the generals. Notice that the times are not sequencial because this was taken from individual log files.
@@ -192,11 +192,88 @@ In this case the minimum number of generals for the algorithm to work are 7, and
 ###### **Three traitors**
 The case for two traitors is more challenging, as each general has to detect possible loops in the messages and avoid relaying those messages. However, in order to test if the algorithm would be able to scale up, instead of testing with two traitors, three proved to give better insights:
 1. First, it took much longer for each general to converge and come up with a reponse. While testing this part, intermediate messages were printed to the log and they had to be moved to a `DEBUG` log, as the time spent on logging affected greatly the performance and it seemed as if it had fallen on a loop.
-2. Second, after the logging was removed, the load to each microservice's web server was so high that it started dropping packages.
+2. Second, after the logging was removed, the load to each microservice's web server was so high that it started dropping packages. To solve this, a rudimentary retry approach was implemented, giving the server a chance to finish its current load.
 
 After fixing these problems, the generals converged to the same result. Finally, as an additional test, the rounds were reduced from four to three. The result was that the generals finished, but they didn't agree on the result.
 
 As a final test, a file for 7 generals, 3 traitors and 4 rounds was created. It is interesting to note that for that test the generals agreeded on the result. However, that result is not guaranteed. In this case, the traitors relay half of the messages, increasing the chance of obtaining the same result.
+
+#### **3. Chaos testing and improvement of microservices**
+##### **Description**
+Chaos testing is a relatively new approach to testing initiated by [Netflix][31] in which failure is introduced to a system to ensure that it will be able to withstand those failures while still providing a good quality level to incoming requests. One of the most popular Chaos Engineering tools is [Chaos Monkey][32]. 
+
+The core idea behind chaos testing is to prove right or wrong a hypothesis regarding the system's stability. If the outcome was the expected result, then the level of confidence on the system increases, and if it fails then actions should be taken to improve the communication channels. Netflix also has developed and open sourced tools to be able to respond to failure. [Hystrix][33] is one of such tools, and it is meant to setup fallback handlers to respond to undesired conditions, such as latency, service errors and service communication problems.
+
+Finally, monitoring applications allows to obtain insights about the production state and behavior of microservices. There are several tools to do this, and Netflix has also open sourced the [Hystrix dashboard][34] to provide real-time statistics of microservices' endpoints.
+
+##### **Implementation**
+[Spring Boot][35] is a framework meant to ease the development Java applications, and to simplify the integration of tools and versions in repositories. The microservices for all parts of this assignment were developed using Spring Boot given that many of Netflix's tools already have support in it. In this part, a very basic micoservices [application][38] was built and [Chaos Monkey for Spring Boot][36] was set up to make it fail randomly. A microservices [client][39] was built and a couple of [test cases][40] were written to test iterations on two different client implementations.
+
+The [first][41] of the clients, `TestClient.java`, was built using a standard component to consume web services. During the evaluation of the capabilities of `Chaos Monkey`, an alternative mechanism to build clients declaratively was found. It is through a tool called [Feign][42]. In order to compare the usage and evaluate it, a [feign client][43] was built in the `FeignTestClient.java` class. Both clients were configured with Hystrix, to provide a fallback response in the case that irregular situations happened on the client. The microservices project was configured to provide real time metrics through [micrometer.io][44]. This instrumentation module feeds several visualization tools and, for this implementation, the metrics were manually consumed using [JMX][45].
+
+`Hystrix Dashboard` is another tool that may consume the statistics produced by micrometer.io. The [projects][47] from a [DZone article][46] were cloned and adjusted to evaluate the Dashboard in isolation. That project starts two microservices and exposes real time data through the `Hystrix Dashboard`, but it is necessary to consume the services or the graphs do not represent anything useful. Because of that, the [resulting project][48] was tested through [Gatling][49], a load and performance testing tool. Several requests were sent while the application was being monitored and the resulting graphs were captured.
+
+##### **Results**
+Chaos Monkey for Spring Boot turned out to provide more functionality than what was expected. Note that a good response would be "test", while a bad response would be "Fallback" for the Feign client and "Sorry, no String available at the moment" for the standard `RestClient`. The responses were stored in a list and displayed at the end of the test case. Three types of failure were tested:
+
+- **Latency**. The endpoint's response was slowed down. As a result, it was possible to use Hystrix to tweak the client and ensure that, in the case of a slow responses or hanging connections, the end-user still receives a response and is able to continue consuming the application. This configuration can be activated in `application.properties` with this line:
+```properties
+chaos.monkey.assaults.latency-active=true
+chaos.monkey.assaults.latencyRangeStart=4000
+chaos.monkey.assaults.latencyRangeEnd=40000
+```
+The feign client can be configured with a timeout; if a service takes longer than that the fallback response is returned. The relevant configuration is as follows:
+```yaml
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+```
+After executing the test cases it is clear that we obtained fallback responses due to slow server responses:
+![Missing graph][50]
+```
+[test, Fallback, test, test, test, test, test, test, test, test, Fallback, Fallback, test, test, test, test, test, test, test, test, test, test, Fallback, test, test, test, test, test, test, ..., Fallback]
+...
+[test, test, test, test, test, test, test, test, test, test, Sorry, no String available at the moment., test, test, test, test, Sorry, no String available at the moment., test, Sorry, no String available at the moment., ..., Sorry, no String available at the moment.]
+```
+- **Server errors**. A Chaos Monkey error (HTTP 500 status) can be returned randomly from the service. In this case Hystrix allows to handle those errors in the same manner as Latency problems, by calling a fallback method. The configuration to create random failure responses is:
+
+```properties
+management.endpoint.chaosmonkey.enabled=true
+```
+And the result was:
+```
+[test, Fallback, Fallback, test, test, test, test, test, test, Fallback, test, Fallback, Fallback, test, Fallback, Fallback, Fallback, Fallback, test, test, test, test, test, test, test, test, test, test, Fallback, test, test, test, test, test, test, test, test, ..., test]
+...
+[test, test, test, test, test, test, test, test, test, Sorry, no String available at the moment., test, test, test, test, test, test, test, Sorry, no String available at the moment., test, test, test, test, test, test, test, test, test, Sorry, ..., no String available at the moment.]
+```
+- **Application shutdown**. It is possible to completely bring down an application through configuration. In this case, enabling this feature was not through a file but through JMX MBeans:
+![Missing graph][51].
+In this case, the client keeps using its fallback mechanism but no implementation was made to automatically bring up the server again. Due to this, after the sevice was brought down all subsecuent calls received the fallback response:
+
+The next step for this part of the assignment was to monitor the applications. The `sample-spring-hystrix` project was cloned and started to that end. The interaction with the microservices is exposed through a website and through a JSON REST endpoint.
+
+The website is exposed at `http://localhost:8080`:
+![Missing graph][52].
+
+The JSON REST endpoint is at `http://localhost:8080/sample-hystrix-aggregate/hello`:
+![Missing graph][53].
+
+Once we start the `Hystrix Dashboard` it stays in a load state, until the microservices have received enough requests to have reportable data:
+![Missing graph][54].
+
+Since generating traffic by hand is cumbersome, `Gatling` tests were created for [the website][55] and the [REST service][56]. An [HTML report][57] is generated with relevant metrics and statistics about the executed test, such as the following:
+![Missing graph][58].
+
+After generating traffic to the microservices' endpoints, the `Hystrix Dashboard` shows in real time statistics about the Hystrix commands:
+![Missing graph][59].
+
+### **Conclusions**
+Distributed systems have evolved as a necessity of the industry and the target has been to provide users with a seamless experience. Consistency and reliability are top concerns for distributed systems' designers and developers. Being able to order events and to produce results despite of failures make vector clocks and concensus algorithms as relevant as they were over 30 years ago.
+
+On the other hand, testing these uncertain environments and achieving an acceptable level of confidence in their robustness has gained the attention of top companies, such as Netflix. Fortunately, access to their tools and frameworks allows the whole community to benefit from and improve those components. In this assignment a handful of them were explored under the belief that testing and monitoring are essential parts of software engineering.
 
 [1]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part1
 [2]: https://github.com/Netflix/eureka/wiki/Eureka-at-a-glance
@@ -228,3 +305,32 @@ As a final test, a file for 7 generals, 3 traitors and 4 rounds was created. It 
 [28]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/byzantine-gens/src/main/java/ca/uvic/concurrency/gmmurguia/a2/byzantinegens/GeneralController.java
 [29]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part2/diagrams/one_traito_execution.PNG?raw=true
 [30]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part2
+[31]: https://web.archive.org/web/20141008152549/http://techblog.netflix.com/2014/09/introducing-chaos-engineering.html
+[32]: https://github.com/Netflix/SimianArmy/wiki/Chaos-Monkey
+[33]: https://github.com/Netflix/Hystrix
+[34]: https://github.com/Netflix-Skunkworks/hystrix-dashboard
+[35]: https://spring.io/projects/spring-boot
+[36]: https://codecentric.github.io/chaos-monkey-spring-boot/
+[37]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part3
+[38]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part3/demo
+[39]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part3/chaos-monkey-poc
+[40]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/chaos-monkey-poc/src/test/java/ca/uvic/concurrency/gmmurguia/a2/chaosmonkeypoc/ChaosMonkeyPocApplicationTests.java
+[41]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/chaos-monkey-poc/src/main/java/ca/uvic/concurrency/gmmurguia/a2/chaosmonkeypoc/TestClient.java
+[42]: https://github.com/OpenFeign/feign
+[43]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/chaos-monkey-poc/src/main/java/ca/uvic/concurrency/gmmurguia/a2/chaosmonkeypoc/FeignTestClient.java
+[44]: https://micrometer.io/
+[45]: https://www.eclipse.org/jetty/documentation/9.4.x/jmx-chapter.html
+[46]: https://dzone.com/articles/spring-cloud-with-turbine
+[47]: https://github.com/bijukunjummen/sample-spring-hystrix
+[48]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part3/sample-spring-hystrix
+[49]: https://gatling.io/
+[50]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/diagrams/chaosmonkey_latency.PNG?raw=true
+[51]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/diagrams/chaosmonkey_killapp.PNG?raw=true
+[52]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/diagrams/hystrix_gui.PNG?raw=true
+[53]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/diagrams/hystrix_helloworld.PNG?raw=true
+[54]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/diagrams/hystrix_helloworld.PNG?raw=true
+[55]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part3/gatling/user-files/simulations
+[56]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part3/gatling/user-files/simulations2
+[57]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part3/gatling/results/recordedsimulation-20181124045656442
+[58]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/diagrams/gatling.PNG?raw=true
+[59]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/diagrams/HystrixDashbard_running.PNG?raw=true
