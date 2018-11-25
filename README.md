@@ -80,7 +80,7 @@ Since all of the events were messages being sent from one process to another, th
 
 ###### **Causally concurrent**
 In this test, the files [test4.yml][12], [test45.yml][13], [test6.yml][14], [test7.yml][15], [test8.yml][16] and [test9.yml][17] were configured to represent the events shown the following diagram (taken from [this lecture][18]):
-![Missing graph][199]
+![Missing graph][19]
 
 `test4.yml` is configured to represent the previous diagram, and will be used as a baseline for the analysis.
 
@@ -174,7 +174,7 @@ To better understand the [generals' project][25] let us consider the following:
 ##### **Results**
 Once the `<file>.bat` is executed, each general will be started as an independent process. Since they are independent it is possible to run all of them on the same machine or use several to distribute the generals; the only caveat is that the Eureka server must be visible to all of them and all should register on the same server, so they can discover each other. The following picture illustrates the execution of the batch file:
 
-![Missing graph][299]
+![Missing graph][29]
 
 ###### **One traitor**
 In this case the minimum number of generals for the algorithm to work are 7, and it can be solved in two rounds. Below is a summary of the execution of the generals. Notice that the times are not sequencial because this was taken from individual log files.
@@ -200,16 +200,16 @@ As a final test, a file for 7 generals, 3 traitors and 4 rounds was created. It 
 
 #### **3. Chaos testing and improvement of microservices**
 ##### **Description**
-Chaos testing is a relatively new approach to testing initiated by [Netflix][31] in which failure is introduced to a system to ensure that it will be able to withstand those failures while still providing a good quality level to incoming requests. One of the most popular Chaos Engineering tools is [Chaos Monkey][32]. 
+Chaos testing is a relatively new approach to testing initiated by [Netflix][31], in which failure is introduced to a system to ensure that it will be able to withstand those failures while still providing a good quality level to incoming requests. One such tool Chaos Engineering tools is [Chaos Monkey][32]. 
 
-The core idea behind chaos testing is to prove right or wrong a hypothesis regarding the system's stability. If the outcome was the expected result, then the level of confidence on the system increases, and if it fails then actions should be taken to improve the communication channels. Netflix also has developed and open sourced tools to be able to respond to failure. [Hystrix][33] is one of such tools, and it is meant to setup fallback handlers to respond to undesired conditions, such as latency, service errors and service communication problems.
+The core idea behind chaos testing is to prove right or wrong a hypothesis regarding the system's stability. If the outcome was the expected result, then the level of confidence on the system increases, and if it fails then actions should be taken to improve the resilience of the system. Netflix has developed and open sourced tools to be able to respond to failure. [Hystrix][33] is one of them, and it is meant to setup fallback handlers to respond to undesired conditions, such as latency, service errors and service communication problems.
 
 Finally, monitoring applications allows to obtain insights about the production state and behavior of microservices. There are several tools to do this, and Netflix has also open sourced the [Hystrix dashboard][34] to provide real-time statistics of microservices' endpoints.
 
 ##### **Implementation**
-[Spring Boot][35] is a framework meant to ease the development Java applications, and to simplify the integration of tools and versions in repositories. The microservices for all parts of this assignment were developed using Spring Boot given that many of Netflix's tools already have support in it. In this part, a very basic micoservices [application][38] was built and [Chaos Monkey for Spring Boot][36] was set up to make it fail randomly. A microservices [client][39] was built and a couple of [test cases][40] were written to test iterations on two different client implementations.
+[Spring Boot][35] is a framework meant to ease the development Java applications, and to simplify the integration of tools and versions in repositories. The microservices for all parts of this assignment were developed using Spring Boot given that many of Netflix's tools are supported by it. In this part, a very basic micoservices [application][38] was built and [Chaos Monkey for Spring Boot][36] was set up to make it fail randomly. A microservices [client][39] was built and a couple of [test cases][40] were written to test iterations on two different client implementations.
 
-The [first][41] of the clients, `TestClient.java`, was built using a standard component to consume web services. During the evaluation of the capabilities of `Chaos Monkey`, an alternative mechanism to build clients declaratively was found. It is through a tool called [Feign][42]. In order to compare the usage and evaluate it, a [feign client][43] was built in the `FeignTestClient.java` class. Both clients were configured with Hystrix, to provide a fallback response in the case that irregular situations happened on the client. The microservices project was configured to provide real time metrics through [micrometer.io][44]. This instrumentation module feeds several visualization tools and, for this implementation, the metrics were manually consumed using [JMX][45].
+The [first][41] of the clients, `TestClient.java`, was built using a standard component to consume web services. During the evaluation of the capabilities of `Chaos Monkey`, an alternative mechanism to build clients declaratively was found. It is through a tool called [Feign][42]. In order to compare the usage and evaluate it, a [feign client][43] was built in the `FeignTestClient.java` class. Both clients were configured with `Hystrix`, to provide a fallback response in the case that irregular situations happened on the client. The microservices project was configured to provide real time metrics through [micrometer.io][44]. This instrumentation module feeds several visualization tools and, for this implementation, the metrics were manually consumed using [JMX][45].
 
 `Hystrix Dashboard` is another tool that may consume the statistics produced by micrometer.io. The [projects][47] from a [DZone article][46] were cloned and adjusted to evaluate the Dashboard in isolation. That project starts two microservices and exposes real time data through the `Hystrix Dashboard`, but it is necessary to consume the services or the graphs do not represent anything useful. Because of that, the [resulting project][48] was tested through [Gatling][49], a load and performance testing tool. Several requests were sent while the application was being monitored and the resulting graphs were captured.
 
@@ -328,7 +328,7 @@ On the other hand, testing these uncertain environments and achieving an accepta
 [51]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/diagrams/chaosmonkey_killapp.PNG?raw=true
 [52]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/diagrams/hystrix_gui.PNG?raw=true
 [53]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/diagrams/hystrix_helloworld.PNG?raw=true
-[54]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/diagrams/hystrix_helloworld.PNG?raw=true
+[54]: https://github.com/sephiroth2029/concurrency-a2/blob/master/part3/diagrams/HystrixDashbard_iddle.PNG?raw=true
 [55]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part3/gatling/user-files/simulations
 [56]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part3/gatling/user-files/simulations2
 [57]: https://github.com/sephiroth2029/concurrency-a2/tree/master/part3/gatling/results/recordedsimulation-20181124045656442
